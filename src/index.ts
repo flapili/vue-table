@@ -115,6 +115,7 @@ export function useTable<
   }>
 
   const Component = defineComponent({
+    inheritAttrs: false,
     slots: Object as Slots,
     setup() {
       const slots = useSlots()
@@ -147,9 +148,9 @@ export function useTable<
           sorting: localSorting.value,
         }
         const children: VNode[] = []
-
         if (slots.header)
-          children.push(h(slots.header, { ctx }))
+          // @ts-expect-error slots.header is not typed
+          children.push(slots.header(ctx))
 
         children.push(h('table', attrs, [
           h('thead', [
@@ -163,16 +164,17 @@ export function useTable<
             localData.value.map(row => h('tr', columnNames.value.map(columnName => h('td', {
               key: columnName,
               style: 'padding: 0px',
-            }, slots[`row-${columnName}`]?.(row, ctx)),
+            }, slots[`row-${columnName}`]?.({ row, ctx })),
             )),
             ),
           ]),
         ]))
 
         if (slots.footer)
-          children.push(h(slots.footer, { ctx }))
+          // @ts-expect-error slots.footer is not typed
+          children.push(slots.footer(ctx))
 
-        return h(children)
+        return children
       }
     },
   })
