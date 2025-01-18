@@ -1,7 +1,7 @@
 {
   "name": "@flapili/vue-table",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "packageManager": "pnpm@10.0.0",
   "author": "Benoît Deveaux <https://github.com/flapili>",
   "license": "MIT",

@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v1.0.1
+
+[compare changes](https://github.com/flapili/vue-table/compare/v1.0.0...v1.0.1)
+
+### 🩹 Fixes
+
+- 🐛  Fix returned component ([05fbd3b](https://github.com/flapili/vue-table/commit/05fbd3b))
+
+### ❤️ Contributors
+
+- Benoit Deveaux ([@flapili](http://github.com/flapili))
+
 ## v1.0.0
 
 
