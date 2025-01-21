@@ -1,6 +1,26 @@
 # Changelog
 
 
+## v2.0.0
+
+[compare changes](https://github.com/flapili/vue-table/compare/v1.0.1...v2.0.0)
+
+### 🚀 Enhancements
+
+- ⚠️  New API design ([723ac3e](https://github.com/flapili/vue-table/commit/723ac3e))
+
+### 📖 Documentation
+
+- Add example with nuxt ([b1a2e1a](https://github.com/flapili/vue-table/commit/b1a2e1a))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  New API design ([723ac3e](https://github.com/flapili/vue-table/commit/723ac3e))
+
+### ❤️ Contributors
+
+- Benoit Deveaux ([@flapili](http://github.com/flapili))
+
 ## v1.0.1
 
 [compare changes](https://github.com/flapili/vue-table/compare/v1.0.0...v1.0.1)
