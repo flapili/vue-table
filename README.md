@@ -22,161 +22,75 @@ yarn add @flapili/vue-table # yarn
 
 ## Usage
 
-Here's a basic example of how to use the table component:
-
-```vue
-<script setup lang="ts">
-import { useTable } from '@flapili/vue-table'
-
-const rows = ref(Array.from({ length: 52 }, (_, i) => ({ key: `id ${i}`, name: `name ${i}`, age: i })))
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-const TableComponentToUseInTemplate = useTable(async ({ page, pageSize, filters, sorting }) => {
-  await sleep(500)
-
-  const start = (page - 1) * pageSize
-  const end = start + pageSize
-
-  const filtered = rows.value.filter(row => filters.foo.length ? row.name.includes(filters.foo) : true)
-  const sorted = filtered.sort((a, b) => sorting.order === 'asc' ? a.age - b.age : b.age - a.age)
-
-  const res = sorted.slice(start, end)
-
-  return { rows: res, totalLength: filtered.length }
-}, {
-  filters: { foo: '' },
-  sorting: { order: 'asc' as 'asc' | 'desc' },
-})
-</script>
-
-<template>
-  <div class="size-full flex flex-col items-center justify-center">
-    <h1 class="text-2xl font-bold">
-      Please don't pay attention to fabulous styling, it's just a demo
-    </h1>
-    <div class="mt-4 flex flex-col bg-yellow">
-      <TableComponentToUseInTemplate class="w-full">
-        <template #header="{ filters, sorting }">
-          header
-          <input v-model="filters.foo" type="text" placeholder="filter" class="m-2 border">
-          <button @click="sorting.order = sorting.order === 'asc' ? 'desc' : 'asc'">
-            {{ sorting.order }}
-          </button>
-        </template>
-        <template #col-name>
-          <div class="bg-blue px-2">
-            Name
-          </div>
-        </template>
-        <template #col-age>
-          <div class="bg-green px-2">
-            Age
-          </div>
-        </template>
-        <template #row-name="{ row, ctx: { loading } }">
-          <div class="bg-red px-2">
-            <template v-if="loading">
-              loading ...
-            </template>
-            <template v-else>
-              {{ row.name }}
-            </template>
-          </div>
-        </template>
-        <template #row-age="{ row, ctx: { loading } }">
-          <div class="bg-gray px-2">
-            <template v-if="loading">
-              loading ...
-            </template>
-            <template v-else>
-              {{ row.age }}
-            </template>
-          </div>
-        </template>
-        <template #footer="{ setPage, page, totalPages, setPageSize }">
-          <div class="bg-blue px-2">
-            <button @click="setPage(page - 1)">
-              prev
-            </button>
-            <button @click="setPage(page + 1)">
-              next
-            </button>
-            {{ page }} / {{ totalPages }}
-          </div>
-          <div class="flex gap-2 bg-blue px-2">
-            per page
-            <button class="bg-red" @click="setPageSize(10)">
-              10
-            </button>
-            <button class="bg-red" @click="setPageSize(20)">
-              20
-            </button>
-          </div>
-        </template>
-      </TableComponentToUseInTemplate>
-    </div>
-  </div>
-</template>
-```
+See [examples](./examples)
 
 ## API Reference
 
-### Context
-
-| Name                  | Description                        |
-|-----------------------|------------------------------------|
-| `loading`             | Whether the table is loading       |
-| `page`                | Current page number                |
-| `pageSize`            | Current page size                  |
-| `totalPages`          | Total number of pages              |
-| `maxLength`           | Total number of rows               |
-| `canGoToNextPage`     | Whether next page is available     |
-| `canGoToPreviousPage` | Whether previous page is available |
-| `setPage`             | Set page function                  |
-| `setPageSize`         | Set page size function             |
-| `totalLength`         | Total number of rows               |
-| `filters`             | Filters object (see below)         |
-| `sorting`             | Sorting object (see below)         |
-
 ### useTable
 
-useTable parameters:
+The `useTable` function accepts the following parameters:
 
-| Parameter          | Description                                                                                      |
-|--------------------|--------------------------------------------------------------------------------------------------|
-| `data`             | A function that returns a promise resolving to an array of rows                                  |
-| `options`          | The options for the table component                                                              |
-| `options.pageSize` | The number of rows per page                                                                      |
-| `options.filters`  | A custom object that will be passed to the data function getter, can be edited via slots binding |
-| `options.sorting`  | A custom object that will be passed to the data function getter, can be edited via slots binding |
+| Parameter          | Description                           |
+|--------------------|---------------------------------------|
+| `data`             | Function that returns paginated data  |
+| `options`          | Configuration options                 |
+| `options.pageSize` | Initial number of rows per page       |
+| `options.ctx`      | Custom context object passed to slots |
 
-### Return Values
+### Return Value Components
 
-| Name             | Description                          |
-|------------------|--------------------------------------|
-| `TableComponent` | Vue component to use in the template |
+The `useTable` function returns the following components:
 
-### TableComponent Slot Props
+| Component    | Description                                               |
+|--------------|-----------------------------------------------------------|
+| `Main`       | The main table component that renders the table structure |
+| `Column`     | Component to define a table column                        |
+| `ColumnHead` | Component to define a column header                       |
+| `ColumnCell` | Component to define a column cell                         |
+| `CustomRow`  | Component to add custom rows before/after each data row   |
+| `State`      | Component to access table state in custom templates       |
 
-The returned component provides the following props to slot headers and footers:
+### Slot Props
 
-| Name  | Description    |
-|-------|----------------|
-| `ctx` | Context object |
+#### Common to all components
 
-The returned component provides the following props to slot columns named `col-<column-name>`:
+| Property              | Description                                      |
+|-----------------------|--------------------------------------------------|
+| `loading`             | Indicates if the table is currently loading data |
+| `page`                | Current page number                              |
+| `pageSize`            | Number of items per page                         |
+| `totalPages`          | Total number of available pages                  |
+| `maxLength`           | Total number of rows in the dataset              |
+| `canGoToNextPage`     | Whether there is a next page available           |
+| `canGoToPreviousPage` | Whether there is a previous page available       |
+| `setPage`             | Function to change the current page              |
+| `setPageSize`         | Function to change the page size                 |
+| `totalLength`         | Total number of items in the dataset             |
+| `ctx`                 | Custom context object passed to useTable         |
 
-| Name  | Description    |
-|-------|----------------|
-| `ctx` | Context object |
+#### Main Component Slots
 
-The returned component provides the following props to slot rows:
+| Slot      | Props                      | Description                 |
+|-----------|----------------------------|-----------------------------|
+| `default` | `{ ctx, rows, ...common }` | Main slot for table content |
 
-| Name  | Description                                                        |
-|-------|--------------------------------------------------------------------|
-| `row` | Row object (inferred from the data passed to the `data` parameter) |
-| `ctx` | Context object                                                     |
+#### Column Component Slots
+
+| Slot      | Props                | Description                |
+|-----------|----------------------|----------------------------|
+| `default` | `{ ctx, ...common }` | Slot for column definition |
+
+#### ColumnHead Component Slots
+
+| Slot      | Props                | Description                    |
+|-----------|----------------------|--------------------------------|
+| `default` | `{ ctx, ...common }` | Slot for column header content |
+
+#### ColumnCell Component Slots
+
+| Slot      | Props                     | Description                  |
+|-----------|---------------------------|------------------------------|
+| `default` | `{ ctx, row, ...common }` | Slot for column cell content |
 
 ## License
 
