@@ -12,7 +12,7 @@
     "vue-router": "latest"
   },
   "devDependencies": {
-    "@flapili/vue-table": "github:flapili/vue-table#dev",
+    "@flapili/vue-table": "2.0.0",
     "@iconify/json": "^2.2.297",
     "@unocss/nuxt": "^65.4.2",
     "@unocss/reset": "^65.4.2",
