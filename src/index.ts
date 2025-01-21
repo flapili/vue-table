@@ -1,38 +1,45 @@
-import type { Ref, SlotsType, VNode } from 'vue'
-import { computed, defineComponent, h, isRef, ref, useAttrs, useSlots, warn, watch } from 'vue'
+import type { PropType, SlotsType, VNode, VNodeArrayChildren, VNodeChild, VNodeNormalizedChildren } from 'vue'
+import { computed, defineComponent, h, isVNode, ref, watch } from 'vue'
 
 type Awaitable<T> = T | PromiseLike<T>
 
-interface Context<Filters extends object, Sorting extends object> {
+interface BaseSlot {
   loading: boolean
   page: number
   pageSize: number
   totalPages: number
-  maxLength: number
   canGoToNextPage: boolean
   canGoToPreviousPage: boolean
   setPage: (page: number) => void
   setPageSize: (pageSize: number) => void
   totalLength: number
-  filters: Filters
-  sorting: Sorting
 }
 
-interface Row {
-  key: PropertyKey
-  [_: PropertyKey]: any
+function runRenderFunctionForSlot(vNode: VNode, slotName: string, args: any) {
+  if (
+    vNode.children === null // Not null
+    || typeof vNode.children !== 'object' // Not an object
+    || Array.isArray(vNode.children) // Not an array
+    || !(slotName in vNode.children) // Slot not found
+  ) {
+    return null
+  }
+  const f = vNode.children[slotName] as (props: any) => VNodeNormalizedChildren
+  return f(args)
 }
 
-export function useTable<
-  Data extends Row,
-  Filters extends object,
-  Sorting extends object,
->(
-  data: (ctx: { page: number, pageSize: number, filters: Filters, sorting: Sorting }) => Awaitable<{ rows: Data[], totalLength: number }>,
+function ensureIsVNode(vNode: VNodeNormalizedChildren) {
+  if (!Array.isArray(vNode) || !vNode.every(isVNode))
+    throw new Error('VNode without content detected')
+
+  return vNode
+}
+
+export function useTable<RowType, Ctx>(
+  data: (args: { page: number, pageSize: number, ctx: Ctx }) => Awaitable<{ rows: RowType[], totalLength: number }>,
   {
     pageSize = 10,
-    filters = {} as Filters,
-    sorting = {} as Sorting,
+    ctx,
   }: {
     /**
      * The number of rows per page.
@@ -41,24 +48,15 @@ export function useTable<
      */
     pageSize?: number
     /**
-     * Filters to apply to the table, passed to the data function getter.
-     *
-     * @default {}
+     * Arbitrary context to pass to the data function getter and to slots.
      */
-    filters?: Filters
-    /**
-     * Sorting to apply to the table, passed to the data function getter.
-     *
-     * @default {}
-     */
-    sorting?: Sorting
+    ctx?: Ctx
   } = {},
 ) {
-  const localData = ref<Data[]>([])
+  const localData = ref<RowType[]>([])
+  const localCtx = ref(ctx)
   const localPageSize = ref(pageSize)
   const localPage = ref(1)
-  const localFilters = ref(filters)
-  const localSorting = ref(sorting)
 
   const loading = ref(true)
   const totalLength = ref(0)
@@ -81,61 +79,86 @@ export function useTable<
   watch([
     localPage,
     localPageSize,
-    () => localFilters.value,
-    () => localSorting.value,
-  ], async ([
-    page,
-    pageSize,
-    filters,
-    sorting,
-  ]) => {
+    () => localCtx.value,
+  ], async ([page, pageSize, ctx]) => {
     loading.value = true
     try {
-      const result = await data({ page, pageSize, filters, sorting })
+      const result = await data({ page, pageSize, ctx })
       localData.value = result.rows
       totalLength.value = result.totalLength
-    }
-    catch (e) {
-      console.error(e)
     }
     finally {
       loading.value = false
     }
   }, { immediate: true, deep: true })
 
-  type Slots = SlotsType<{
-    [C in `col-${string}`]: (props: { ctx: Context<Filters, Sorting> }) => any
-  } & {
-    [C in `row-${string}`]: (props: { row: Data, ctx: Context<Filters, Sorting> }) => any
-  } & {
-    'header'?: (props: Context<Filters, Sorting>) => any
-    'footer'?: (props: Context<Filters, Sorting>) => any
-    'col-key'?: (props: { ctx: Context<Filters, Sorting> }) => any
-    'row-key'?: (props: { row: Data, ctx: Context<Filters, Sorting> }) => any
-  }>
-
-  const Component = defineComponent({
-    inheritAttrs: false,
-    slots: Object as Slots,
+  const State = defineComponent({
+    slots: Object as SlotsType<{
+      default: (props: BaseSlot & { rows: RowType[], ctx: Ctx }) => any
+    }>,
     setup() {
-      const slots = useSlots()
-      const attrs = useAttrs()
-
-      const columnNames = computed(() => {
-        return Object.keys(slots)
-          .filter(slotName => slotName.startsWith('col-'))
-          .map(slotName => slotName.replace('col-', ''))
-      })
-
-      watch(columnNames, (columnNames) => {
-        columnNames.forEach((columnName) => {
-          if (!slots[`row-${columnName}`])
-            warn(`No slot for row ${columnName}`)
-        })
-      }, { immediate: true })
-
       return () => {
-        const ctx = {
+        throw new Error('State component must be used within the Main component')
+      }
+    },
+  })
+
+  const CustomRow = defineComponent({
+    props: {
+      mode: {
+        type: String as PropType<'before' | 'after'>,
+        required: true,
+      },
+    },
+    slots: Object as SlotsType<{
+      default: (props: BaseSlot & { ctx: Ctx, row: RowType }) => any
+    }>,
+    setup() {
+      return () => {
+        throw new Error('CustomRow component must be used within the Main component')
+      }
+    },
+  })
+
+  const Column = defineComponent({
+    setup() {
+      return () => {
+        throw new Error('Column component must be used within the Main component')
+      }
+    },
+  })
+
+  const ColumnHead = defineComponent({
+    slots: Object as SlotsType<{
+      default: (props: BaseSlot & { ctx: Ctx }) => any
+    }>,
+    setup() {
+      return () => {
+        throw new Error('ColumnHead component must be used within the Column component')
+      }
+    },
+  })
+
+  const ColumnCell = defineComponent({
+    slots: Object as SlotsType<{
+      default: (props: BaseSlot & { ctx: Ctx, row: RowType }) => any
+    }>,
+    setup() {
+      return () => {
+        throw new Error('ColumnCell component must be used within the Column component')
+      }
+    },
+  })
+
+  const Main = defineComponent({
+    inheritAttrs: false,
+    slots: Object as SlotsType<{
+      default: (props: BaseSlot & { ctx: Ctx, rows: RowType[] }) => VNode[]
+    }>,
+    setup(props, { attrs, slots }) {
+      return () => {
+        const baseSlot = {
+          loading: loading.value,
           page: localPage.value,
           pageSize: localPageSize.value,
           totalPages: totalPages.value,
@@ -144,40 +167,123 @@ export function useTable<
           totalLength: totalLength.value,
           canGoToNextPage: canGoToNextPage.value,
           canGoToPreviousPage: canGoToPreviousPage.value,
-          filters: localFilters.value,
-          sorting: localSorting.value,
         }
-        const children: VNode[] = []
-        if (slots.header)
-          // @ts-expect-error slots.header is not typed
-          children.push(slots.header(ctx))
 
-        children.push(h('table', attrs, [
-          h('thead', [
-            h('tr', columnNames.value.map(columnName => h('th', {
-              key: columnName,
-              style: 'padding: 0px',
-            }, slots[`col-${columnName}`]?.(ctx)),
-            )),
-          ]),
-          h('tbody', [
-            localData.value.map(row => h('tr', columnNames.value.map(columnName => h('td', {
-              key: columnName,
-              style: 'padding: 0px',
-            }, slots[`row-${columnName}`]?.({ row, ctx })),
-            )),
-            ),
-          ]),
-        ]))
+        const toRender: VNodeNormalizedChildren = []
 
-        if (slots.footer)
-          // @ts-expect-error slots.footer is not typed
-          children.push(slots.footer(ctx))
+        const children = slots.default({ ...baseSlot, ctx: localCtx.value, rows: localData.value as RowType[] })
 
-        return children
+        children
+          .filter(vNode => vNode.type === State)
+          .forEach((stateNode) => {
+            const r = runRenderFunctionForSlot(stateNode, 'default', { ctx: localCtx.value, rows: localData.value, ...baseSlot })
+            if (!r)
+              return // empty slot (<State />)
+            if (Array.isArray(r))
+              toRender.push(r)
+          })
+
+        const customRows = {
+          before: [] as VNode[],
+          after: [] as VNode[],
+        }
+        const rowVNodes = children.filter((child): child is VNode => isVNode(child) && child.type === CustomRow)
+        for (const rowVNode of rowVNodes) {
+          const mode = rowVNode.props?.mode as 'before' | 'after'
+          customRows[mode].push(rowVNode)
+        }
+
+        // Main logic
+        {
+          const headCells: {
+            vNode: VNodeChild
+            props: Record<string, any>
+          }[] = []
+
+          const rows: {
+            cells: { vNode: VNodeNormalizedChildren, props: Record<string, any> }[]
+            data: RowType
+          }[] = Array.from({ length: localData.value.length }, (_, index) => ({
+            cells: [],
+            data: localData.value[index] as RowType,
+          }))
+
+          const columnVNodes = children.filter((child): child is VNode => isVNode(child) && child.type === Column)
+          for (const columnVNode of columnVNodes) {
+            const vNode = runRenderFunctionForSlot(columnVNode, 'default', { ctx: localCtx.value, rows: localData.value, ...baseSlot })
+
+            const children = ensureIsVNode(vNode)
+            if (children.length !== 2)
+              throw new Error('TableColumn must have exactly 2 components children, ColumnHead and ColumnCell')
+
+            const columnCellSlot = children.find((child): child is VNode => isVNode(child) && child.type === ColumnCell)
+            if (!columnCellSlot)
+              throw new Error('ColumnCell Component missing for Column')
+
+            const head = children.find((child): child is VNode => isVNode(child) && child.type === ColumnHead)
+            if (!head)
+              throw new Error('ColumnHead Component missing for Column')
+
+            const headSlot = runRenderFunctionForSlot(head, 'default', { ctx: localCtx.value, ...baseSlot })
+            if (Array.isArray(headSlot)) {
+              headCells.push(...headSlot
+                .filter(vNode => isVNode(vNode))
+                .map(vNode => ({ vNode, props: head.props ?? {} })))
+            }
+
+            localData.value.forEach((row, rowIndex) => {
+              const vNode = runRenderFunctionForSlot(columnCellSlot, 'default', { ctx: localCtx.value, row, ...baseSlot })
+              rows[rowIndex].cells.push({ vNode, props: columnCellSlot.props ?? {} })
+            })
+          }
+
+          const thead = h('thead', {}, h('tr', {}, headCells.map(
+            cell => h('td', cell.props, cell.vNode!),
+          )))
+
+          const tbody = h('tbody', {}, rows.map((row) => {
+            const beforeRow = customRows.before
+              .filter(customRow => isVNode(customRow))
+              .map(vNode => ({
+                vNode: runRenderFunctionForSlot(vNode, 'default', { ctx: localCtx.value, row: row.data, ...baseSlot }),
+                props: vNode.props ?? {},
+              }))
+              .filter(r => r.vNode !== null)
+              .map(r => h('tr', r.props, r.vNode!))
+
+            const rowContent = h('tr', {}, row.cells.filter(cell => cell.vNode !== null).map(
+              (cell) => {
+                return h('td', cell.props, cell.vNode!)
+              },
+            ))
+
+            const afterRow = customRows.after
+              .filter(customRow => isVNode(customRow))
+              .map(vNode => ({
+                vNode: runRenderFunctionForSlot(vNode, 'default', { ctx: localCtx.value, row: row.data, ...baseSlot }),
+                props: vNode.props ?? {},
+              }))
+              .filter(r => r.vNode !== null)
+              .map(r => h('tr', r.props, r.vNode!))
+
+            return [...beforeRow, rowContent, ...afterRow]
+          }))
+
+          const table = h('table', attrs, [thead, tbody])
+          toRender.push(table)
+        }
+
+        return toRender
       }
     },
   })
 
-  return Component
+  return {
+    Main,
+    CustomRow,
+    Column,
+    State,
+    ColumnHead,
+    ColumnCell,
+  }
 }
