@@ -1,0 +1,25 @@
+{
+  "name": "example-with-nuxt",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "nuxt dev"
+  },
+  "dependencies": {
+    "nuxt": "^3.15.2",
+    "vue": "latest",
+    "vue-router": "latest"
+  },
+  "devDependencies": {
+    "@flapili/vue-table": "github:flapili/vue-table#dev",
+    "@iconify/json": "^2.2.297",
+    "@unocss/nuxt": "^65.4.2",
+    "@unocss/reset": "^65.4.2",
+    "typescript": "^5.7.3",
+    "unocss": "^65.4.2"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": []
+  }
+}
